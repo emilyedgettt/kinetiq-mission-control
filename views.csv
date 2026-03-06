@@ -1,0 +1,366 @@
+view_schema,view_name,definition
+analytics,v_leads_canonical," WITH all_rows AS (
+         SELECT 'tra'::text AS company,
+            to_jsonb(t.*) AS ""row""
+           FROM ""tra_5-0"" t
+        UNION ALL
+         SELECT 'dra'::text,
+            to_jsonb(d.*) AS to_jsonb
+           FROM ""dra_5-0"" d
+        UNION ALL
+         SELECT 'gt'::text,
+            to_jsonb(g.*) AS to_jsonb
+           FROM ""gt_5-0"" g
+        )
+ SELECT company,
+    ((""row"" ->> 'uuid'::text))::uuid AS uuid,
+    ((""row"" ->> 'date_created'::text))::timestamp with time zone AS date_created,
+    (""row"" ->> 'aff_id'::text) AS aff_id,
+    (""row"" ->> 'off_id'::text) AS off_id,
+    (""row"" ->> 'affiliate'::text) AS affiliate,
+    (""row"" ->> 'source_id'::text) AS source_id,
+    (""row"" ->> 'case'::text) AS ""case"",
+    (""row"" ->> 'first_name'::text) AS first_name,
+    (""row"" ->> 'last_name'::text) AS last_name,
+    (""row"" ->> 'phone'::text) AS phone,
+    (""row"" ->> 'email'::text) AS email,
+    (NULLIF((""row"" ->> 'debt_amount'::text), ''::text))::numeric AS debt_amount,
+    (""row"" ->> 'state'::text) AS state,
+    (""row"" ->> 'ip'::text) AS ip,
+    (""row"" ->> 'trans_id'::text) AS trans_id,
+    (""row"" ->> 'unique_id'::text) AS unique_id,
+    (""row"" ->> 'url'::text) AS url,
+    (""row"" ->> 'sub1'::text) AS sub1,
+    (""row"" ->> 'sub2'::text) AS sub2,
+    (""row"" ->> 'sub3'::text) AS sub3,
+    (""row"" ->> 'sub4'::text) AS sub4,
+    (""row"" ->> 'sub5'::text) AS sub5,
+    (NULLIF((""row"" ->> 'income'::text), ''::text))::numeric AS income,
+    (NULLIF((""row"" ->> 'expenses'::text), ''::text))::numeric AS expenses,
+    (""row"" ->> 'tax_issues'::text) AS tax_issues,
+    (""row"" - ARRAY['uuid'::text, 'date_created'::text, 'aff_id'::text, 'off_id'::text, 'affiliate'::text, 'source_id'::text, 'case'::text, 'first_name'::text, 'last_name'::text, 'phone'::text, 'email'::text, 'debt_amount'::text, 'state'::text, 'ip'::text, 'trans_id'::text, 'unique_id'::text, 'url'::text, 'sub1'::text, 'sub2'::text, 'sub3'::text, 'sub4'::text, 'sub5'::text, 'income'::text, 'expenses'::text, 'tax_issues'::text]) AS extras
+   FROM all_rows;"
+extensions,pg_stat_statements," SELECT userid,
+    dbid,
+    toplevel,
+    queryid,
+    query,
+    plans,
+    total_plan_time,
+    min_plan_time,
+    max_plan_time,
+    mean_plan_time,
+    stddev_plan_time,
+    calls,
+    total_exec_time,
+    min_exec_time,
+    max_exec_time,
+    mean_exec_time,
+    stddev_exec_time,
+    rows,
+    shared_blks_hit,
+    shared_blks_read,
+    shared_blks_dirtied,
+    shared_blks_written,
+    local_blks_hit,
+    local_blks_read,
+    local_blks_dirtied,
+    local_blks_written,
+    temp_blks_read,
+    temp_blks_written,
+    shared_blk_read_time,
+    shared_blk_write_time,
+    local_blk_read_time,
+    local_blk_write_time,
+    temp_blk_read_time,
+    temp_blk_write_time,
+    wal_records,
+    wal_fpi,
+    wal_bytes,
+    jit_functions,
+    jit_generation_time,
+    jit_inlining_count,
+    jit_inlining_time,
+    jit_optimization_count,
+    jit_optimization_time,
+    jit_emission_count,
+    jit_emission_time,
+    jit_deform_count,
+    jit_deform_time,
+    stats_since,
+    minmax_stats_since
+   FROM pg_stat_statements(true) pg_stat_statements(userid, dbid, toplevel, queryid, query, plans, total_plan_time, min_plan_time, max_plan_time, mean_plan_time, stddev_plan_time, calls, total_exec_time, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time, rows, shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written, shared_blk_read_time, shared_blk_write_time, local_blk_read_time, local_blk_write_time, temp_blk_read_time, temp_blk_write_time, wal_records, wal_fpi, wal_bytes, jit_functions, jit_generation_time, jit_inlining_count, jit_inlining_time, jit_optimization_count, jit_optimization_time, jit_emission_count, jit_emission_time, jit_deform_count, jit_deform_time, stats_since, minmax_stats_since);"
+extensions,pg_stat_statements_info," SELECT dealloc,
+    stats_reset
+   FROM pg_stat_statements_info() pg_stat_statements_info(dealloc, stats_reset);"
+public,v_all_daily_v2," SELECT v_forms_daily.company,
+    v_forms_daily.aff_lookup,
+    v_forms_daily.campaign_key,
+    v_forms_daily.pacific_date,
+    v_forms_daily.lead_count,
+    'forms'::text AS traffic_type
+   FROM v_forms_daily
+UNION ALL
+ SELECT v_coreg_daily.company,
+    v_coreg_daily.aff_lookup,
+    v_coreg_daily.campaign_key,
+    v_coreg_daily.pacific_date,
+    v_coreg_daily.lead_count,
+    'coreg'::text AS traffic_type
+   FROM v_coreg_daily;"
+public,v_coreg_blocks," SELECT company,
+    aff_lookup,
+    (company || aff_lookup) AS campaign_key,
+    pacific_date,
+    block_index,
+        CASE
+            WHEN (block_index = 0) THEN '12am–4am'::text
+            WHEN (block_index = 1) THEN '4am–8am'::text
+            WHEN (block_index = 2) THEN '8am–12pm'::text
+            WHEN (block_index = 3) THEN '12pm–4pm'::text
+            WHEN (block_index = 4) THEN '4pm–8pm'::text
+            ELSE '8pm–12am'::text
+        END AS block_label,
+    leads AS lead_count
+   FROM coreg_facts;"
+public,v_coreg_daily," SELECT company,
+    aff_lookup,
+    (company || aff_lookup) AS campaign_key,
+    pacific_date,
+    (sum(leads))::bigint AS lead_count
+   FROM coreg_facts
+  GROUP BY company, aff_lookup, campaign_key, pacific_date;"
+public,v_coreg_events," SELECT m.company,
+    c.aff_id AS aff_lookup,
+    c.date_created,
+    date(timezone('America/Los_Angeles'::text, c.date_created)) AS pacific_date,
+        CASE
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (0)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (3)::numeric)) THEN 0
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (4)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (7)::numeric)) THEN 1
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (8)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (11)::numeric)) THEN 2
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (12)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (15)::numeric)) THEN 3
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (16)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (19)::numeric)) THEN 4
+            ELSE 5
+        END AS block_index
+   FROM (tra_coreg_all c
+     JOIN myprecious m ON (((m.aff_lookup = c.aff_id) AND (m.company = ANY (ARRAY['DATA'::text, 'DEBT'::text])))))
+UNION ALL
+ SELECT m.company,
+    c.aff_id AS aff_lookup,
+    c.date_created,
+    date(timezone('America/Los_Angeles'::text, c.date_created)) AS pacific_date,
+        CASE
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (0)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (3)::numeric)) THEN 0
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (4)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (7)::numeric)) THEN 1
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (8)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (11)::numeric)) THEN 2
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (12)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (15)::numeric)) THEN 3
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (16)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (19)::numeric)) THEN 4
+            ELSE 5
+        END AS block_index
+   FROM (tra_coreg2026 c
+     JOIN myprecious m ON (((m.aff_lookup = c.aff_id) AND (m.company = ANY (ARRAY['DATA'::text, 'DEBT'::text])))))
+UNION ALL
+ SELECT m.company,
+    c.aff_id AS aff_lookup,
+    c.date_created,
+    date(timezone('America/Los_Angeles'::text, c.date_created)) AS pacific_date,
+        CASE
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (0)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (3)::numeric)) THEN 0
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (4)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (7)::numeric)) THEN 1
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (8)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (11)::numeric)) THEN 2
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (12)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (15)::numeric)) THEN 3
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (16)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (19)::numeric)) THEN 4
+            ELSE 5
+        END AS block_index
+   FROM (dracoreg2026 c
+     JOIN myprecious m ON (((m.aff_lookup = c.aff_id) AND (m.company = ANY (ARRAY['DATA'::text, 'DEBT'::text])))))
+UNION ALL
+ SELECT m.company,
+    c.aff_id AS aff_lookup,
+    c.date_created,
+    date(timezone('America/Los_Angeles'::text, c.date_created)) AS pacific_date,
+        CASE
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (0)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (3)::numeric)) THEN 0
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (4)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (7)::numeric)) THEN 1
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (8)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (11)::numeric)) THEN 2
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (12)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (15)::numeric)) THEN 3
+            WHEN ((EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) >= (16)::numeric) AND (EXTRACT(hour FROM timezone('America/Los_Angeles'::text, c.date_created)) <= (19)::numeric)) THEN 4
+            ELSE 5
+        END AS block_index
+   FROM (dra_coreg_all c
+     JOIN myprecious m ON (((m.aff_lookup = c.aff_id) AND (m.company = ANY (ARRAY['DATA'::text, 'DEBT'::text])))));"
+public,v_forms_blocks," WITH events_local AS (
+         SELECT v_forms_events.company,
+            v_forms_events.aff_lookup,
+            timezone('America/Los_Angeles'::text, v_forms_events.date_created) AS pacific_ts
+           FROM v_forms_events
+        ), events_blocked AS (
+         SELECT events_local.company,
+            events_local.aff_lookup,
+            events_local.pacific_ts,
+            date(events_local.pacific_ts) AS pacific_date,
+            EXTRACT(hour FROM events_local.pacific_ts) AS pacific_hour
+           FROM events_local
+        )
+ SELECT company,
+    aff_lookup,
+    (company || aff_lookup) AS campaign_key,
+    pacific_date,
+        CASE
+            WHEN ((pacific_hour >= (0)::numeric) AND (pacific_hour <= (3)::numeric)) THEN 0
+            WHEN ((pacific_hour >= (4)::numeric) AND (pacific_hour <= (7)::numeric)) THEN 1
+            WHEN ((pacific_hour >= (8)::numeric) AND (pacific_hour <= (11)::numeric)) THEN 2
+            WHEN ((pacific_hour >= (12)::numeric) AND (pacific_hour <= (15)::numeric)) THEN 3
+            WHEN ((pacific_hour >= (16)::numeric) AND (pacific_hour <= (19)::numeric)) THEN 4
+            ELSE 5
+        END AS block_index,
+        CASE
+            WHEN ((pacific_hour >= (0)::numeric) AND (pacific_hour <= (3)::numeric)) THEN '12am–4am'::text
+            WHEN ((pacific_hour >= (4)::numeric) AND (pacific_hour <= (7)::numeric)) THEN '4am–8am'::text
+            WHEN ((pacific_hour >= (8)::numeric) AND (pacific_hour <= (11)::numeric)) THEN '8am–12pm'::text
+            WHEN ((pacific_hour >= (12)::numeric) AND (pacific_hour <= (15)::numeric)) THEN '12pm–4pm'::text
+            WHEN ((pacific_hour >= (16)::numeric) AND (pacific_hour <= (19)::numeric)) THEN '4pm–8pm'::text
+            ELSE '8pm–12am'::text
+        END AS block_label,
+    count(*) AS lead_count
+   FROM events_blocked
+  GROUP BY company, aff_lookup, (company || aff_lookup), pacific_date,
+        CASE
+            WHEN ((pacific_hour >= (0)::numeric) AND (pacific_hour <= (3)::numeric)) THEN 0
+            WHEN ((pacific_hour >= (4)::numeric) AND (pacific_hour <= (7)::numeric)) THEN 1
+            WHEN ((pacific_hour >= (8)::numeric) AND (pacific_hour <= (11)::numeric)) THEN 2
+            WHEN ((pacific_hour >= (12)::numeric) AND (pacific_hour <= (15)::numeric)) THEN 3
+            WHEN ((pacific_hour >= (16)::numeric) AND (pacific_hour <= (19)::numeric)) THEN 4
+            ELSE 5
+        END,
+        CASE
+            WHEN ((pacific_hour >= (0)::numeric) AND (pacific_hour <= (3)::numeric)) THEN '12am–4am'::text
+            WHEN ((pacific_hour >= (4)::numeric) AND (pacific_hour <= (7)::numeric)) THEN '4am–8am'::text
+            WHEN ((pacific_hour >= (8)::numeric) AND (pacific_hour <= (11)::numeric)) THEN '8am–12pm'::text
+            WHEN ((pacific_hour >= (12)::numeric) AND (pacific_hour <= (15)::numeric)) THEN '12pm–4pm'::text
+            WHEN ((pacific_hour >= (16)::numeric) AND (pacific_hour <= (19)::numeric)) THEN '4pm–8pm'::text
+            ELSE '8pm–12am'::text
+        END;"
+public,v_forms_daily," SELECT company,
+    aff_lookup,
+    (company || aff_lookup) AS campaign_key,
+    date(timezone('America/Los_Angeles'::text, date_created)) AS pacific_date,
+    count(*) AS lead_count
+   FROM v_forms_events
+  GROUP BY company, aff_lookup, (company || aff_lookup), (date(timezone('America/Los_Angeles'::text, date_created)));"
+public,v_forms_events," SELECT 'tra'::text AS company,
+        CASE
+            WHEN (NULLIF(btrim(""tra_5-0"".off_id), ''::text) IS NULL) THEN btrim(""tra_5-0"".aff_id)
+            ELSE (btrim(""tra_5-0"".aff_id) || btrim(""tra_5-0"".off_id))
+        END AS aff_lookup,
+    ""tra_5-0"".date_created
+   FROM ""tra_5-0""
+UNION ALL
+ SELECT 'tra'::text AS company,
+        CASE
+            WHEN (NULLIF(btrim(tra_forms_all.off_id), ''::text) IS NULL) THEN btrim(tra_forms_all.aff_id)
+            ELSE (btrim(tra_forms_all.aff_id) || btrim(tra_forms_all.off_id))
+        END AS aff_lookup,
+    tra_forms_all.date_created
+   FROM tra_forms_all
+UNION ALL
+ SELECT 'gt'::text AS company,
+        CASE
+            WHEN (NULLIF(btrim(""gt_5-0"".off_id), ''::text) IS NULL) THEN btrim(""gt_5-0"".aff_id)
+            ELSE (btrim(""gt_5-0"".aff_id) || btrim(""gt_5-0"".off_id))
+        END AS aff_lookup,
+    ""gt_5-0"".date_created
+   FROM ""gt_5-0""
+UNION ALL
+ SELECT 'dra'::text AS company,
+        CASE
+            WHEN (NULLIF(btrim(""dra_5-0"".off_id), ''::text) IS NULL) THEN btrim(""dra_5-0"".aff_id)
+            ELSE (btrim(""dra_5-0"".aff_id) || btrim(""dra_5-0"".off_id))
+        END AS aff_lookup,
+    ""dra_5-0"".date_created
+   FROM ""dra_5-0"";"
+public,v_leaderboard_now," WITH ranked AS (
+         SELECT mv_now_v2.company,
+            mv_now_v2.campaign_key,
+            mv_now_v2.aff_lookup,
+            mv_now_v2.today_pacific_date,
+            mv_now_v2.today_so_far AS acquired,
+            mv_now_v2.current_block_index,
+            mv_now_v2.blocks_fraction,
+            mv_now_v2.lifetime_daily_avg AS baseline,
+            (mv_now_v2.lifetime_daily_avg * mv_now_v2.blocks_fraction) AS expected_by_now,
+            ((mv_now_v2.today_so_far)::numeric - (mv_now_v2.lifetime_daily_avg * mv_now_v2.blocks_fraction)) AS delta,
+                CASE
+                    WHEN ((mv_now_v2.lifetime_daily_avg * mv_now_v2.blocks_fraction) = (0)::numeric) THEN NULL::numeric
+                    ELSE ((mv_now_v2.today_so_far)::numeric / (mv_now_v2.lifetime_daily_avg * mv_now_v2.blocks_fraction))
+                END AS velocity,
+            row_number() OVER (PARTITION BY mv_now_v2.company ORDER BY mv_now_v2.today_so_far DESC NULLS LAST) AS rn
+           FROM mv_now_v2
+          WHERE (mv_now_v2.company = ANY (ARRAY['tra'::text, 'dra'::text, 'gt'::text, 'DATA'::text, 'DEBT'::text]))
+        )
+ SELECT company,
+    campaign_key,
+    aff_lookup,
+    today_pacific_date,
+    acquired,
+    current_block_index,
+    blocks_fraction,
+    baseline,
+    expected_by_now,
+    delta,
+    velocity,
+    rn
+   FROM ranked
+  WHERE (rn <= 5)
+  ORDER BY
+        CASE company
+            WHEN 'tra'::text THEN 1
+            WHEN 'dra'::text THEN 2
+            WHEN 'gt'::text THEN 3
+            WHEN 'DATA'::text THEN 4
+            WHEN 'DEBT'::text THEN 5
+            ELSE 99
+        END, rn;"
+sales,cases_current," SELECT DISTINCT ON (c.unique_case_id) c.unique_case_id,
+    c.case_id,
+    c.shop,
+    c.vertical,
+    c.first_name,
+    c.last_name,
+    c.full_name,
+    c.state,
+    c.source,
+    c.sale_date,
+    c.logics_date,
+    c.logics_lead_created_date,
+    c.transaction_id,
+    c.aff_transaction_id,
+    c.lead_id,
+    c.gross_sale,
+    c.total_payments,
+    c.debt_amount,
+    c.date_added,
+    c.created_at,
+    c.updated_at,
+    s.snapshot_date,
+    s.updated_total_payments AS current_total_payments,
+    s.updated_gross_sale AS current_gross_sale,
+    s.updated_amount_owed AS current_debt_amount,
+    s.updated_status AS current_status,
+    s.updated_payment_status AS current_payment_status,
+    s.past_due_count,
+    s.nsf_count,
+    s.default_count
+   FROM (sales.cases c
+     LEFT JOIN sales.case_snapshots s ON ((s.unique_case_id = c.unique_case_id)))
+  ORDER BY c.unique_case_id, s.snapshot_date DESC;"
+vault,decrypted_secrets," SELECT id,
+    name,
+    description,
+    secret,
+    convert_from(vault._crypto_aead_det_decrypt(message => decode(secret, 'base64'::text), additional => convert_to((id)::text, 'utf8'::name), key_id => (0)::bigint, context => '\x7067736f6469756d'::bytea, nonce => nonce), 'utf8'::name) AS decrypted_secret,
+    key_id,
+    nonce,
+    created_at,
+    updated_at
+   FROM vault.secrets s;"

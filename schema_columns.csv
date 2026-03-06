@@ -1,0 +1,101 @@
+table_schema,table_name,column_name,ordinal_position,data_type,udt_name,is_nullable,column_default
+analytics,v_leads_canonical,company,1,text,text,YES,null
+analytics,v_leads_canonical,uuid,2,uuid,uuid,YES,null
+analytics,v_leads_canonical,date_created,3,timestamp with time zone,timestamptz,YES,null
+analytics,v_leads_canonical,aff_id,4,text,text,YES,null
+analytics,v_leads_canonical,off_id,5,text,text,YES,null
+analytics,v_leads_canonical,affiliate,6,text,text,YES,null
+analytics,v_leads_canonical,source_id,7,text,text,YES,null
+analytics,v_leads_canonical,case,8,text,text,YES,null
+analytics,v_leads_canonical,first_name,9,text,text,YES,null
+analytics,v_leads_canonical,last_name,10,text,text,YES,null
+analytics,v_leads_canonical,phone,11,text,text,YES,null
+analytics,v_leads_canonical,email,12,text,text,YES,null
+analytics,v_leads_canonical,debt_amount,13,numeric,numeric,YES,null
+analytics,v_leads_canonical,state,14,text,text,YES,null
+analytics,v_leads_canonical,ip,15,text,text,YES,null
+analytics,v_leads_canonical,trans_id,16,text,text,YES,null
+analytics,v_leads_canonical,unique_id,17,text,text,YES,null
+analytics,v_leads_canonical,url,18,text,text,YES,null
+analytics,v_leads_canonical,sub1,19,text,text,YES,null
+analytics,v_leads_canonical,sub2,20,text,text,YES,null
+analytics,v_leads_canonical,sub3,21,text,text,YES,null
+analytics,v_leads_canonical,sub4,22,text,text,YES,null
+analytics,v_leads_canonical,sub5,23,text,text,YES,null
+analytics,v_leads_canonical,income,24,numeric,numeric,YES,null
+analytics,v_leads_canonical,expenses,25,numeric,numeric,YES,null
+analytics,v_leads_canonical,tax_issues,26,text,text,YES,null
+analytics,v_leads_canonical,extras,27,jsonb,jsonb,YES,null
+auth,audit_log_entries,instance_id,1,uuid,uuid,YES,null
+auth,audit_log_entries,id,2,uuid,uuid,NO,null
+auth,audit_log_entries,payload,3,json,json,YES,null
+auth,audit_log_entries,created_at,4,timestamp with time zone,timestamptz,YES,null
+auth,audit_log_entries,ip_address,5,character varying,varchar,NO,''::character varying
+auth,custom_oauth_providers,id,1,uuid,uuid,NO,gen_random_uuid()
+auth,custom_oauth_providers,provider_type,2,text,text,NO,null
+auth,custom_oauth_providers,identifier,3,text,text,NO,null
+auth,custom_oauth_providers,name,4,text,text,NO,null
+auth,custom_oauth_providers,client_id,5,text,text,NO,null
+auth,custom_oauth_providers,client_secret,6,text,text,NO,null
+auth,custom_oauth_providers,acceptable_client_ids,7,ARRAY,_text,NO,'{}'::text[]
+auth,custom_oauth_providers,scopes,8,ARRAY,_text,NO,'{}'::text[]
+auth,custom_oauth_providers,pkce_enabled,9,boolean,bool,NO,TRUE
+auth,custom_oauth_providers,attribute_mapping,10,jsonb,jsonb,NO,'{}'::jsonb
+auth,custom_oauth_providers,authorization_params,11,jsonb,jsonb,NO,'{}'::jsonb
+auth,custom_oauth_providers,enabled,12,boolean,bool,NO,TRUE
+auth,custom_oauth_providers,email_optional,13,boolean,bool,NO,FALSE
+auth,custom_oauth_providers,issuer,14,text,text,YES,null
+auth,custom_oauth_providers,discovery_url,15,text,text,YES,null
+auth,custom_oauth_providers,skip_nonce_check,16,boolean,bool,NO,FALSE
+auth,custom_oauth_providers,cached_discovery,17,jsonb,jsonb,YES,null
+auth,custom_oauth_providers,discovery_cached_at,18,timestamp with time zone,timestamptz,YES,null
+auth,custom_oauth_providers,authorization_url,19,text,text,YES,null
+auth,custom_oauth_providers,token_url,20,text,text,YES,null
+auth,custom_oauth_providers,userinfo_url,21,text,text,YES,null
+auth,custom_oauth_providers,jwks_uri,22,text,text,YES,null
+auth,custom_oauth_providers,created_at,23,timestamp with time zone,timestamptz,NO,now()
+auth,custom_oauth_providers,updated_at,24,timestamp with time zone,timestamptz,NO,now()
+auth,flow_state,id,1,uuid,uuid,NO,null
+auth,flow_state,user_id,2,uuid,uuid,YES,null
+auth,flow_state,auth_code,3,text,text,YES,null
+auth,flow_state,code_challenge_method,4,USER-DEFINED,code_challenge_method,YES,null
+auth,flow_state,code_challenge,5,text,text,YES,null
+auth,flow_state,provider_type,6,text,text,NO,null
+auth,flow_state,provider_access_token,7,text,text,YES,null
+auth,flow_state,provider_refresh_token,8,text,text,YES,null
+auth,flow_state,created_at,9,timestamp with time zone,timestamptz,YES,null
+auth,flow_state,updated_at,10,timestamp with time zone,timestamptz,YES,null
+auth,flow_state,authentication_method,11,text,text,NO,null
+auth,flow_state,auth_code_issued_at,12,timestamp with time zone,timestamptz,YES,null
+auth,flow_state,invite_token,13,text,text,YES,null
+auth,flow_state,referrer,14,text,text,YES,null
+auth,flow_state,oauth_client_state_id,15,uuid,uuid,YES,null
+auth,flow_state,linking_target_id,16,uuid,uuid,YES,null
+auth,flow_state,email_optional,17,boolean,bool,NO,FALSE
+auth,identities,provider_id,1,text,text,NO,null
+auth,identities,user_id,2,uuid,uuid,NO,null
+auth,identities,identity_data,3,jsonb,jsonb,NO,null
+auth,identities,provider,4,text,text,NO,null
+auth,identities,last_sign_in_at,5,timestamp with time zone,timestamptz,YES,null
+auth,identities,created_at,6,timestamp with time zone,timestamptz,YES,null
+auth,identities,updated_at,7,timestamp with time zone,timestamptz,YES,null
+auth,identities,email,8,text,text,YES,null
+auth,identities,id,9,uuid,uuid,NO,gen_random_uuid()
+auth,instances,id,1,uuid,uuid,NO,null
+auth,instances,uuid,2,uuid,uuid,YES,null
+auth,instances,raw_base_config,3,text,text,YES,null
+auth,instances,created_at,4,timestamp with time zone,timestamptz,YES,null
+auth,instances,updated_at,5,timestamp with time zone,timestamptz,YES,null
+auth,mfa_amr_claims,session_id,1,uuid,uuid,NO,null
+auth,mfa_amr_claims,created_at,2,timestamp with time zone,timestamptz,NO,null
+auth,mfa_amr_claims,updated_at,3,timestamp with time zone,timestamptz,NO,null
+auth,mfa_amr_claims,authentication_method,4,text,text,NO,null
+auth,mfa_amr_claims,id,5,uuid,uuid,NO,null
+auth,mfa_challenges,id,1,uuid,uuid,NO,null
+auth,mfa_challenges,factor_id,2,uuid,uuid,NO,null
+auth,mfa_challenges,created_at,3,timestamp with time zone,timestamptz,NO,null
+auth,mfa_challenges,verified_at,4,timestamp with time zone,timestamptz,YES,null
+auth,mfa_challenges,ip_address,5,inet,inet,NO,null
+auth,mfa_challenges,otp_code,6,text,text,YES,null
+auth,mfa_challenges,web_authn_session_data,7,jsonb,jsonb,YES,null
+auth,mfa_factors,id,1,uuid,uuid,NO,null

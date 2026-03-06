@@ -1,0 +1,7 @@
+jobid,schedule,command,nodename,nodeport,database,username,active,jobname
+1,*/15 * * * *,refresh materialized view concurrently public.mv_campaign_activity;,localhost,5432,postgres,postgres,TRUE,mv_campaign_activity_refresh_15m
+6,20 8 * * *,refresh materialized view concurrently public.mv_periods_v2;,localhost,5432,postgres,postgres,TRUE,mv_periods_v2_refresh_daily
+10,1-59/10 * * * *,refresh materialized view concurrently public.mv_now_v2;,localhost,5432,postgres,postgres,TRUE,mv_now_v2_refresh_10m
+11,25 8 * * *,refresh materialized view concurrently public.mv_lifecycle_averages_v1;,localhost,5432,postgres,postgres,TRUE,mv_lifecycle_averages_v1_refresh_daily
+12,30 8 * * *,refresh materialized view concurrently public.mv_ytd_yoy_v1;,localhost,5432,postgres,postgres,TRUE,mv_ytd_yoy_v1_refresh_daily
+14,*/10 * * * *,select public.refresh_coreg_facts();,localhost,5432,postgres,postgres,TRUE,coreg_facts_refresh_10m

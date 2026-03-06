@@ -1,0 +1,101 @@
+function_schema,function_name,identity_args,return_type,language,prokind,security_definer
+auth,email,,text,sql,f,FALSE
+auth,jwt,,jsonb,sql,f,FALSE
+auth,role,,text,sql,f,FALSE
+auth,uid,,uuid,sql,f,FALSE
+backfill,append_tag_if_missing,"base text, tag text",text,sql,f,FALSE
+backfill,clean_debt_amount,p text,text,sql,f,FALSE
+backfill,normalize_phone,p text,text,sql,f,FALSE
+backfill,nullif_blank,p text,text,sql,f,FALSE
+backfill,parse_la_ts,p text,timestamp with time zone,plpgsql,f,FALSE
+backfill,squash_ws,p text,text,sql,f,FALSE
+backfill,strip_digits,p text,text,sql,f,FALSE
+cron,alter_job,"job_id bigint, schedule text, command text, database text, username text, active boolean",void,c,f,FALSE
+cron,job_cache_invalidate,,trigger,c,f,FALSE
+cron,schedule,"job_name text, schedule text, command text",bigint,c,f,FALSE
+cron,schedule,"schedule text, command text",bigint,c,f,FALSE
+cron,schedule_in_database,"job_name text, schedule text, command text, database text, username text, active boolean",bigint,c,f,FALSE
+cron,unschedule,job_id bigint,boolean,c,f,FALSE
+cron,unschedule,job_name text,boolean,c,f,FALSE
+extensions,armor,bytea,text,c,f,FALSE
+extensions,armor,"bytea, text[], text[]",text,c,f,FALSE
+extensions,crypt,"text, text",text,c,f,FALSE
+extensions,dearmor,text,bytea,c,f,FALSE
+extensions,decrypt,"bytea, bytea, text",bytea,c,f,FALSE
+extensions,decrypt_iv,"bytea, bytea, bytea, text",bytea,c,f,FALSE
+extensions,digest,"bytea, text",bytea,c,f,FALSE
+extensions,digest,"text, text",bytea,c,f,FALSE
+extensions,encrypt,"bytea, bytea, text",bytea,c,f,FALSE
+extensions,encrypt_iv,"bytea, bytea, bytea, text",bytea,c,f,FALSE
+extensions,gen_random_bytes,integer,bytea,c,f,FALSE
+extensions,gen_random_uuid,,uuid,c,f,FALSE
+extensions,gen_salt,text,text,c,f,FALSE
+extensions,gen_salt,"text, integer",text,c,f,FALSE
+extensions,grant_pg_cron_access,,event_trigger,plpgsql,f,FALSE
+extensions,grant_pg_graphql_access,,event_trigger,plpgsql,f,FALSE
+extensions,grant_pg_net_access,,event_trigger,plpgsql,f,FALSE
+extensions,hmac,"bytea, bytea, text",bytea,c,f,FALSE
+extensions,hmac,"text, text, text",bytea,c,f,FALSE
+extensions,pg_stat_statements,"showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT shared_blk_read_time double precision, OUT shared_blk_write_time double precision, OUT local_blk_read_time double precision, OUT local_blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision, OUT jit_deform_count bigint, OUT jit_deform_time double precision, OUT stats_since timestamp with time zone, OUT minmax_stats_since timestamp with time zone",SETOF record,c,f,FALSE
+extensions,pg_stat_statements_info,"OUT dealloc bigint, OUT stats_reset timestamp with time zone",record,c,f,FALSE
+extensions,pg_stat_statements_reset,"userid oid, dbid oid, queryid bigint, minmax_only boolean",timestamp with time zone,c,f,FALSE
+extensions,pgp_armor_headers,"text, OUT key text, OUT value text",SETOF record,c,f,FALSE
+extensions,pgp_key_id,bytea,text,c,f,FALSE
+extensions,pgp_pub_decrypt,"bytea, bytea",text,c,f,FALSE
+extensions,pgp_pub_decrypt,"bytea, bytea, text",text,c,f,FALSE
+extensions,pgp_pub_decrypt,"bytea, bytea, text, text",text,c,f,FALSE
+extensions,pgp_pub_decrypt_bytea,"bytea, bytea",bytea,c,f,FALSE
+extensions,pgp_pub_decrypt_bytea,"bytea, bytea, text",bytea,c,f,FALSE
+extensions,pgp_pub_decrypt_bytea,"bytea, bytea, text, text",bytea,c,f,FALSE
+extensions,pgp_pub_encrypt,"text, bytea",bytea,c,f,FALSE
+extensions,pgp_pub_encrypt,"text, bytea, text",bytea,c,f,FALSE
+extensions,pgp_pub_encrypt_bytea,"bytea, bytea",bytea,c,f,FALSE
+extensions,pgp_pub_encrypt_bytea,"bytea, bytea, text",bytea,c,f,FALSE
+extensions,pgp_sym_decrypt,"bytea, text",text,c,f,FALSE
+extensions,pgp_sym_decrypt,"bytea, text, text",text,c,f,FALSE
+extensions,pgp_sym_decrypt_bytea,"bytea, text",bytea,c,f,FALSE
+extensions,pgp_sym_decrypt_bytea,"bytea, text, text",bytea,c,f,FALSE
+extensions,pgp_sym_encrypt,"text, text",bytea,c,f,FALSE
+extensions,pgp_sym_encrypt,"text, text, text",bytea,c,f,FALSE
+extensions,pgp_sym_encrypt_bytea,"bytea, text",bytea,c,f,FALSE
+extensions,pgp_sym_encrypt_bytea,"bytea, text, text",bytea,c,f,FALSE
+extensions,pgrst_ddl_watch,,event_trigger,plpgsql,f,FALSE
+extensions,pgrst_drop_watch,,event_trigger,plpgsql,f,FALSE
+extensions,set_graphql_placeholder,,event_trigger,plpgsql,f,FALSE
+extensions,uuid_generate_v1,,uuid,c,f,FALSE
+extensions,uuid_generate_v1mc,,uuid,c,f,FALSE
+extensions,uuid_generate_v3,"namespace uuid, name text",uuid,c,f,FALSE
+extensions,uuid_generate_v4,,uuid,c,f,FALSE
+extensions,uuid_generate_v5,"namespace uuid, name text",uuid,c,f,FALSE
+extensions,uuid_nil,,uuid,c,f,FALSE
+extensions,uuid_ns_dns,,uuid,c,f,FALSE
+extensions,uuid_ns_oid,,uuid,c,f,FALSE
+extensions,uuid_ns_url,,uuid,c,f,FALSE
+extensions,uuid_ns_x500,,uuid,c,f,FALSE
+graphql,_internal_resolve,"query text, variables jsonb, ""operationName"" text, extensions jsonb",jsonb,c,f,FALSE
+graphql,comment_directive,comment_ text,jsonb,sql,f,FALSE
+graphql,exception,message text,text,plpgsql,f,FALSE
+graphql,get_schema_version,,integer,sql,f,TRUE
+graphql,increment_schema_version,,event_trigger,plpgsql,f,TRUE
+graphql,resolve,"query text, variables jsonb, ""operationName"" text, extensions jsonb",jsonb,plpgsql,f,FALSE
+graphql_public,graphql,"""operationName"" text, query text, variables jsonb, extensions jsonb",jsonb,sql,f,FALSE
+pgbouncer,get_auth,p_usename text,"TABLE(username text, password text)",plpgsql,f,TRUE
+public,_insert_shared_5_0,"target_table regclass, aff_id text, off_id text, affiliate text, ""case"" text, first_name text, last_name text, phone text, email text, debt_amount text, state text, ip text, trans_id text, unique_id text, url text, source_id text, sub1 text, sub2 text, sub3 text, sub4 text, sub5 text, income text, expenses text, tax_issues text",jsonb,plpgsql,f,TRUE
+public,handle_updated_at,,trigger,plpgsql,f,FALSE
+public,insert_dra_5_0,"aff_id text, off_id text, affiliate text, ""case"" text, first_name text, last_name text, phone text, email text, debt_amount text, state text, ip text, trans_id text, unique_id text, url text, source_id text, sub1 text, sub2 text, sub3 text, sub4 text, sub5 text, income text, expenses text, tax_issues text",jsonb,sql,f,TRUE
+public,insert_dra_db_bogo_fb_rr,"aff_id text, off_id text, affiliate text, ""case"" text, first_name text, last_name text, phone text, email text, debt_amount text, state text, ip text, trans_id text, unique_id text, url text, source_id text, sub1 text, sub2 text, sub3 text, sub4 text, sub5 text, income text, expenses text, tax_issues text",jsonb,sql,f,TRUE
+public,insert_dra_db_carbonari_rr,"aff_id text, off_id text, affiliate text, ""case"" text, first_name text, last_name text, phone text, email text, debt_amount text, state text, ip text, trans_id text, unique_id text, url text, source_id text, sub1 text, sub2 text, sub3 text, sub4 text, sub5 text, income text, expenses text, tax_issues text",jsonb,sql,f,TRUE
+public,insert_dra_direct_,"aff_id text, off_id text, affiliate text, ""case"" text, first_name text, last_name text, phone text, email text, debt_amount text, state text, ip text, trans_id text, unique_id text, url text, source_id text, sub1 text, sub2 text, sub3 text, sub4 text, sub5 text, income text, expenses text, tax_issues text",jsonb,sql,f,TRUE
+public,insert_efn_5_0,"aff_id text, off_id text, affiliate text, ""case"" text, first_name text, last_name text, phone text, email text, debt_amount text, state text, ip text, trans_id text, unique_id text, url text, source_id text, sub1 text, sub2 text, sub3 text, sub4 text, sub5 text, income text, expenses text, tax_issues text",jsonb,sql,f,TRUE
+public,insert_gt_5_0,"aff_id text, off_id text, affiliate text, ""case"" text, first_name text, last_name text, phone text, email text, debt_amount text, state text, ip text, trans_id text, unique_id text, url text, source_id text, sub1 text, sub2 text, sub3 text, sub4 text, sub5 text, income text, expenses text, tax_issues text",jsonb,sql,f,TRUE
+public,insert_gt_tra_eminem_tt_rr,"aff_id text, off_id text, affiliate text, ""case"" text, first_name text, last_name text, phone text, email text, debt_amount text, state text, ip text, trans_id text, unique_id text, url text, source_id text, sub1 text, sub2 text, sub3 text, sub4 text, sub5 text, income text, expenses text, tax_issues text",jsonb,sql,f,TRUE
+public,insert_tra_5_0,"aff_id text, off_id text, affiliate text, ""case"" text, first_name text, last_name text, phone text, email text, debt_amount text, state text, ip text, trans_id text, unique_id text, url text, source_id text, sub1 text, sub2 text, sub3 text, sub4 text, sub5 text, income text, expenses text, tax_issues text",jsonb,sql,f,TRUE
+public,insert_tra_direct,"aff_id text, off_id text, affiliate text, ""case"" text, first_name text, last_name text, phone text, email text, debt_amount text, state text, ip text, trans_id text, unique_id text, url text, source_id text, sub1 text, sub2 text, sub3 text, sub4 text, sub5 text, income text, expenses text, tax_issues text",jsonb,sql,f,TRUE
+public,insert_tra_gt_illuminati_rr,"aff_id text, off_id text, affiliate text, ""case"" text, first_name text, last_name text, phone text, email text, debt_amount text, state text, ip text, trans_id text, unique_id text, url text, source_id text, sub1 text, sub2 text, sub3 text, sub4 text, sub5 text, income text, expenses text, tax_issues text",jsonb,sql,f,TRUE
+public,insert_zzzmastermonitorlizard,log jsonb,jsonb,plpgsql,f,TRUE
+public,mc_whoami,,jsonb,plpgsql,f,FALSE
+public,myprecious_set_updated_at,,trigger,plpgsql,f,FALSE
+public,rebuild_mission_roster,,json,plpgsql,f,TRUE
+public,refresh_coreg_facts,"p_start_date date, p_end_date date",void,plpgsql,f,FALSE
+public,route_lead,payload jsonb,jsonb,plpgsql,f,TRUE
+public,rpc_campaign_forecast_v1,"p_campaign_key text, p_company text, p_traffic_type text, p_mode text",jsonb,plpgsql,f,FALSE

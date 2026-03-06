@@ -1,0 +1,1456 @@
+-- Consolidated SQL (ordered by dependencies)
+-- NOTE: This file mirrors the current SQL in /sql. Update this file
+-- whenever any underlying SQL file changes.
+--
+-- Legacy views removed from this consolidated script (files kept for rollback):
+--   - public.v_forms_baselines
+--   - public.v_coreg_baselines
+--   - public.v_forms_pacing_status
+--   - public.v_coreg_pacing_status
+--   - public.v_pacing_status_all
+--   - public.v_pacing_status_now
+--   - public.mv_pacing_status_now
+
+-- =====================================================================
+-- FILE: sql/auth/01_mc_auth_tables.sql
+-- =====================================================================
+-- Mission Control auth tables (callsign mapping + throttle)
+
+create schema if not exists mc_auth;
+
+create table if not exists mc_auth.mc_commanders (
+  callsign text primary key,
+  email text not null,
+  commander_display text not null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists mc_auth.mc_login_throttle (
+  throttle_key text primary key,
+  callsign text not null,
+  ip_hash text not null,
+  failed_count int not null default 0,
+  cooldown_until timestamptz null,
+  window_start timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists mc_login_throttle_callsign_idx
+  on mc_auth.mc_login_throttle (callsign);
+
+create index if not exists mc_login_throttle_updated_at_idx
+  on mc_auth.mc_login_throttle (updated_at);
+
+revoke all on table mc_auth.mc_commanders from anon, authenticated;
+revoke all on table mc_auth.mc_login_throttle from anon, authenticated;
+
+
+-- =====================================================================
+-- FILE: sql/forms/01_forms_events_view.sql
+-- =====================================================================
+-- v_forms_events
+-- Purpose: Normalize form/lead events across TRA, GT, and DRA
+-- Source tables:
+--   - public."tra_5-0"
+--   - public.tra_forms_all
+--   - public."gt_5-0"
+--   - public."dra_5-0"
+-- Campaign key logic:
+--   campaign_key = company || aff_lookup
+--   aff_lookup = aff_id || off_id (no separator)
+-- Notes:
+--   - Coreg events are handled separately in v_coreg_events
+--   - No filtering or deduplication performed
+
+create or replace view public.v_forms_events as
+-- Source: public."tra_5-0"
+select
+  'tra'::text as company,
+  case
+    when nullif(btrim(off_id::text), '') is null
+      then btrim(aff_id::text)
+    else btrim(aff_id::text) || btrim(off_id::text)
+  end as aff_lookup,
+  date_created::timestamptz as date_created
+from public."tra_5-0"
+
+union all
+
+-- Source: public.tra_forms_all
+select
+  'tra'::text as company,
+  case
+    when nullif(btrim(off_id::text), '') is null
+      then btrim(aff_id::text)
+    else btrim(aff_id::text) || btrim(off_id::text)
+  end as aff_lookup,
+  date_created::timestamptz as date_created
+from public.tra_forms_all
+
+union all
+
+-- Source: public."gt_5-0"
+select
+  'gt'::text as company,
+  case
+    when nullif(btrim(off_id::text), '') is null
+      then btrim(aff_id::text)
+    else btrim(aff_id::text) || btrim(off_id::text)
+  end as aff_lookup,
+  date_created::timestamptz as date_created
+from public."gt_5-0"
+
+union all
+
+-- Source: public."dra_5-0"
+select
+  'dra'::text as company,
+  case
+    when nullif(btrim(off_id::text), '') is null
+      then btrim(aff_id::text)
+    else btrim(aff_id::text) || btrim(off_id::text)
+  end as aff_lookup,
+  date_created::timestamptz as date_created
+from public."dra_5-0";
+
+
+-- =====================================================================
+-- FILE: sql/forms/02_forms_daily_rollup_view.sql
+-- =====================================================================
+-- v_forms_daily
+-- Purpose: Daily lead counts in America/Los_Angeles time.
+create or replace view public.v_forms_daily as
+select
+  company::text as company,
+  aff_lookup::text as aff_lookup,
+  (company::text || aff_lookup::text) as campaign_key,
+  date(timezone('America/Los_Angeles', date_created)) as pacific_date,
+  count(*)::bigint as lead_count
+from public.v_forms_events
+group by
+  company,
+  aff_lookup,
+  campaign_key,
+  pacific_date;
+
+
+-- =====================================================================
+-- FILE: sql/forms/03_forms_block_rollup_view.sql
+-- =====================================================================
+-- v_forms_blocks
+-- Purpose: 4-hour lead blocks in America/Los_Angeles time.
+create or replace view public.v_forms_blocks as
+with events_local as (
+  select
+    company,
+    aff_lookup,
+    timezone('America/Los_Angeles', date_created) as pacific_ts
+  from public.v_forms_events
+),
+events_blocked as (
+  select
+    company,
+    aff_lookup,
+    pacific_ts,
+    date(pacific_ts) as pacific_date,
+    extract(hour from pacific_ts) as pacific_hour
+  from events_local
+)
+select
+  company::text as company,
+  aff_lookup::text as aff_lookup,
+  (company::text || aff_lookup::text) as campaign_key,
+  pacific_date,
+  case
+    when pacific_hour between 0 and 3 then 0
+    when pacific_hour between 4 and 7 then 1
+    when pacific_hour between 8 and 11 then 2
+    when pacific_hour between 12 and 15 then 3
+    when pacific_hour between 16 and 19 then 4
+    else 5
+  end as block_index,
+  case
+    when pacific_hour between 0 and 3 then '12am–4am'
+    when pacific_hour between 4 and 7 then '4am–8am'
+    when pacific_hour between 8 and 11 then '8am–12pm'
+    when pacific_hour between 12 and 15 then '12pm–4pm'
+    when pacific_hour between 16 and 19 then '4pm–8pm'
+    else '8pm–12am'
+  end as block_label,
+  count(*)::bigint as lead_count
+from events_blocked
+group by
+  company,
+  aff_lookup,
+  campaign_key,
+  pacific_date,
+  block_index,
+  block_label;
+
+
+-- =====================================================================
+-- FILE: sql/coreg/02_coreg_events_view.sql
+-- =====================================================================
+-- v_coreg_events
+-- Purpose: Normalize coreg events and attach DATA/DEBT company
+-- Source tables:
+--   - public.tra_coreg_all
+--   - public.tra_coreg2026
+--   - public.dracoreg2026
+--   - public.dra_coreg_all
+-- Company derived from public.myprecious (DATA/DEBT)
+
+create or replace view public.v_coreg_events as
+-- Source: public.tra_coreg_all
+select
+  m.company::text as company,
+  c.aff_id::text as aff_lookup,
+  c.date_created as date_created,
+  date(timezone('America/Los_Angeles', c.date_created)) as pacific_date,
+  case
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 0 and 3 then 0
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 4 and 7 then 1
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 8 and 11 then 2
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 12 and 15 then 3
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 16 and 19 then 4
+    else 5
+  end as block_index
+from public.tra_coreg_all c
+join public.myprecious m
+  on m.aff_lookup = c.aff_id
+ and m.company in ('DATA', 'DEBT')
+
+union all
+
+-- Source: public.tra_coreg2026
+select
+  m.company::text as company,
+  c.aff_id::text as aff_lookup,
+  c.date_created as date_created,
+  date(timezone('America/Los_Angeles', c.date_created)) as pacific_date,
+  case
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 0 and 3 then 0
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 4 and 7 then 1
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 8 and 11 then 2
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 12 and 15 then 3
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 16 and 19 then 4
+    else 5
+  end as block_index
+from public.tra_coreg2026 c
+join public.myprecious m
+  on m.aff_lookup = c.aff_id
+ and m.company in ('DATA', 'DEBT')
+
+union all
+
+-- Source: public.dracoreg2026
+select
+  m.company::text as company,
+  c.aff_id::text as aff_lookup,
+  c.date_created as date_created,
+  date(timezone('America/Los_Angeles', c.date_created)) as pacific_date,
+  case
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 0 and 3 then 0
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 4 and 7 then 1
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 8 and 11 then 2
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 12 and 15 then 3
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 16 and 19 then 4
+    else 5
+  end as block_index
+from public.dracoreg2026 c
+join public.myprecious m
+  on m.aff_lookup = c.aff_id
+ and m.company in ('DATA', 'DEBT');
+
+union all
+
+-- Source: public.dra_coreg_all
+select
+  m.company::text as company,
+  c.aff_id::text as aff_lookup,
+  c.date_created as date_created,
+  date(timezone('America/Los_Angeles', c.date_created)) as pacific_date,
+  case
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 0 and 3 then 0
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 4 and 7 then 1
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 8 and 11 then 2
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 12 and 15 then 3
+    when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 16 and 19 then 4
+    else 5
+  end as block_index
+from public.dra_coreg_all c
+join public.myprecious m
+  on m.aff_lookup = c.aff_id
+ and m.company in ('DATA', 'DEBT');
+
+
+-- =====================================================================
+-- FILE: sql/coreg/02_coreg_daily_rollup_view.sql
+-- =====================================================================
+-- v_coreg_daily
+-- Purpose: Canonical daily coreg rollups (facts-backed).
+-- Note: Dashboards/Lovable should query this view, not raw coreg tables.
+create or replace view public.v_coreg_daily as
+select
+  company::text as company,
+  aff_lookup::text as aff_lookup,
+  (company::text || aff_lookup::text) as campaign_key,
+  pacific_date,
+  sum(leads)::bigint as lead_count
+from public.coreg_facts
+group by
+  company,
+  aff_lookup,
+  campaign_key,
+  pacific_date;
+
+
+-- =====================================================================
+-- FILE: sql/coreg/03_coreg_block_rollup_view.sql
+-- =====================================================================
+-- v_coreg_blocks
+-- Purpose: Canonical 4-hour coreg rollups (facts-backed).
+-- Note: Dashboards/Lovable should query this view, not raw coreg tables.
+create or replace view public.v_coreg_blocks as
+select
+  company::text as company,
+  aff_lookup::text as aff_lookup,
+  (company::text || aff_lookup::text) as campaign_key,
+  pacific_date,
+  block_index,
+  case
+    when block_index = 0 then '12am–4am'
+    when block_index = 1 then '4am–8am'
+    when block_index = 2 then '8am–12pm'
+    when block_index = 3 then '12pm–4pm'
+    when block_index = 4 then '4pm–8pm'
+    else '8pm–12am'
+  end as block_label,
+  leads::bigint as lead_count
+from public.coreg_facts;
+
+
+-- =====================================================================
+-- FILE: sql/coreg/06_refresh_coreg_facts.sql
+-- =====================================================================
+-- refresh_coreg_facts
+-- Purpose: Incrementally refresh coreg_facts for a small date window.
+create or replace function public.refresh_coreg_facts(
+  p_start_date date default (timezone('America/Los_Angeles', now())::date - 3),
+  p_end_date date default timezone('America/Los_Angeles', now())::date
+) returns void
+language plpgsql
+as $$
+declare
+  v_start_ts timestamptz;
+  v_end_ts timestamptz;
+begin
+  v_start_ts := (p_start_date::timestamp at time zone 'America/Los_Angeles');
+  v_end_ts := ((p_end_date + 1)::timestamp at time zone 'America/Los_Angeles');
+
+  insert into public.coreg_facts (
+    company,
+    aff_lookup,
+    campaign_key,
+    pacific_date,
+    block_index,
+    leads,
+    updated_at
+  )
+  select
+    company,
+    aff_lookup,
+    (company || aff_lookup) as campaign_key,
+    pacific_date,
+    block_index,
+    count(*)::bigint as leads,
+    now() as updated_at
+  from (
+    -- TRA history
+    select
+      'DATA'::text as company,
+      c.aff_id::text as aff_lookup,
+      date(timezone('America/Los_Angeles', c.date_created)) as pacific_date,
+      case
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 0 and 3 then 0
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 4 and 7 then 1
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 8 and 11 then 2
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 12 and 15 then 3
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 16 and 19 then 4
+        else 5
+      end as block_index
+    from public.tra_coreg_all c
+    where c.date_created >= v_start_ts
+      and c.date_created < v_end_ts
+
+    union all
+
+    -- TRA 2026
+    select
+      'DATA'::text as company,
+      c.aff_id::text as aff_lookup,
+      date(timezone('America/Los_Angeles', c.date_created)) as pacific_date,
+      case
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 0 and 3 then 0
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 4 and 7 then 1
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 8 and 11 then 2
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 12 and 15 then 3
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 16 and 19 then 4
+        else 5
+      end as block_index
+    from public.tra_coreg2026 c
+    where c.date_created >= v_start_ts
+      and c.date_created < v_end_ts
+
+    union all
+
+    -- DRA history
+    select
+      'DEBT'::text as company,
+      c.aff_id::text as aff_lookup,
+      date(timezone('America/Los_Angeles', c.date_created)) as pacific_date,
+      case
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 0 and 3 then 0
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 4 and 7 then 1
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 8 and 11 then 2
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 12 and 15 then 3
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 16 and 19 then 4
+        else 5
+      end as block_index
+    from public.dra_coreg_all c
+    where c.date_created >= v_start_ts
+      and c.date_created < v_end_ts
+
+    union all
+
+    -- DRA 2026
+    select
+      'DEBT'::text as company,
+      c.aff_id::text as aff_lookup,
+      date(timezone('America/Los_Angeles', c.date_created)) as pacific_date,
+      case
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 0 and 3 then 0
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 4 and 7 then 1
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 8 and 11 then 2
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 12 and 15 then 3
+        when extract(hour from timezone('America/Los_Angeles', c.date_created)) between 16 and 19 then 4
+        else 5
+      end as block_index
+    from public.dracoreg2026 c
+    where c.date_created >= v_start_ts
+      and c.date_created < v_end_ts
+  ) s
+  group by company, aff_lookup, pacific_date, block_index
+  on conflict (company, aff_lookup, pacific_date, block_index)
+  do update set
+    leads = excluded.leads,
+    updated_at = excluded.updated_at;
+end;
+$$;
+
+
+-- =====================================================================
+-- FILE: sql/activity/01_campaign_activity_view.sql
+-- =====================================================================
+-- v_campaign_activity
+-- Purpose: Compute dynamic campaign activity for dashboard + alerting.
+-- Logic:
+--   - A campaign is "active" if it has >= 1 event in the current month OR previous month
+--     using America/Los_Angeles month boundaries.
+--   - Manual override supported via public.myprecious.is_active_override:
+--       NULL  -> use computed activity
+--       TRUE  -> force active
+--       FALSE -> force inactive
+--   - Effective flag used by dashboard/alerts:
+--       is_active_effective = COALESCE(is_active_override, is_active_computed)
+-- Sources:
+--   - public.myprecious (campaign list + overrides + affiliate_manager)
+--   - public.v_forms_events (TRA/GT/DRA events)
+--   - public.coreg_facts (DATA/DEBT facts)
+-- Output:
+--   company, aff_lookup, campaign_key, events_last_2_months, last_seen_at,
+--   is_active_computed, is_active_override, is_active_effective, affiliate_manager
+
+create or replace view public.v_campaign_activity as
+with
+-- Compute month boundaries in America/Los_Angeles.
+month_bounds as (
+  select
+    date_trunc('month', timezone('America/Los_Angeles', now())) as start_of_current_month_local,
+    date_trunc('month', timezone('America/Los_Angeles', now())) - interval '1 month'
+      as start_of_previous_month_local,
+    date_trunc('month', timezone('America/Los_Angeles', now())) + interval '1 month'
+      as start_of_next_month_local
+),
+-- Aggregate forms events in current + previous month window.
+forms_events_window as (
+  select
+    e.company,
+    e.aff_lookup,
+    count(*)::bigint as events_last_2_months,
+    max(e.date_created) as last_seen_at
+  from public.v_forms_events e
+  cross join month_bounds b
+  where timezone('America/Los_Angeles', e.date_created)
+        >= b.start_of_previous_month_local
+    and timezone('America/Los_Angeles', e.date_created)
+        < b.start_of_next_month_local
+  group by e.company, e.aff_lookup
+),
+-- Aggregate coreg facts in current + previous month window (by pacific_date).
+coreg_events_window as (
+  select
+    f.company,
+    f.aff_lookup,
+    sum(f.leads)::bigint as events_last_2_months,
+    (timezone('America/Los_Angeles', max(f.pacific_date)::timestamp) at time zone 'UTC')
+      as last_seen_at
+  from public.coreg_facts f
+  cross join month_bounds b
+  where f.pacific_date >= b.start_of_previous_month_local::date
+    and f.pacific_date < b.start_of_next_month_local::date
+  group by f.company, f.aff_lookup
+),
+events_window as (
+  select company, aff_lookup, events_last_2_months, last_seen_at
+  from forms_events_window
+  union all
+  select company, aff_lookup, events_last_2_months, last_seen_at
+  from coreg_events_window
+)
+select
+  m.company::text as company,
+  m.aff_lookup::text as aff_lookup,
+  (m.company::text || m.aff_lookup::text) as campaign_key,
+  coalesce(w.events_last_2_months, 0)::bigint as events_last_2_months,
+  w.last_seen_at as last_seen_at,
+  (coalesce(w.events_last_2_months, 0) > 0) as is_active_computed,
+  m.is_active_override as is_active_override,
+  coalesce(m.is_active_override, (coalesce(w.events_last_2_months, 0) > 0))
+    as is_active_effective,
+  m.affiliate_manager::text as affiliate_manager
+from public.myprecious m
+left join events_window w
+  on w.company = m.company
+ and w.aff_lookup = m.aff_lookup;
+
+
+-- =====================================================================
+-- FILE: sql/activity/02_campaign_activity_mv.sql
+-- =====================================================================
+-- mv_campaign_activity
+-- Purpose: Materialized campaign activity for dashboards + alerting.
+create materialized view public.mv_campaign_activity as
+with
+-- Compute month boundaries in America/Los_Angeles.
+month_bounds as (
+  select
+    date_trunc('month', timezone('America/Los_Angeles', now())) as start_of_current_month_local,
+    date_trunc('month', timezone('America/Los_Angeles', now())) - interval '1 month'
+      as start_of_previous_month_local,
+    date_trunc('month', timezone('America/Los_Angeles', now())) + interval '1 month'
+      as start_of_next_month_local
+),
+-- Aggregate forms events in current + previous month window.
+forms_events_window as (
+  select
+    e.company,
+    e.aff_lookup,
+    count(*)::bigint as events_last_2_months,
+    max(e.date_created) as last_seen_at
+  from public.v_forms_events e
+  cross join month_bounds b
+  where timezone('America/Los_Angeles', e.date_created)
+        >= b.start_of_previous_month_local
+    and timezone('America/Los_Angeles', e.date_created)
+        < b.start_of_next_month_local
+  group by e.company, e.aff_lookup
+),
+-- Aggregate coreg facts in current + previous month window (by pacific_date).
+coreg_events_window as (
+  select
+    f.company,
+    f.aff_lookup,
+    sum(f.leads)::bigint as events_last_2_months,
+    (timezone('America/Los_Angeles', max(f.pacific_date)::timestamp) at time zone 'UTC')
+      as last_seen_at
+  from public.coreg_facts f
+  cross join month_bounds b
+  where f.pacific_date >= b.start_of_previous_month_local::date
+    and f.pacific_date < b.start_of_next_month_local::date
+  group by f.company, f.aff_lookup
+),
+events_window as (
+  select company, aff_lookup, events_last_2_months, last_seen_at
+  from forms_events_window
+  union all
+  select company, aff_lookup, events_last_2_months, last_seen_at
+  from coreg_events_window
+)
+select
+  m.company::text as company,
+  m.aff_lookup::text as aff_lookup,
+  (m.company::text || m.aff_lookup::text) as campaign_key,
+  m.publisher::text as publisher,
+  m.campaign::text as campaign,
+  coalesce(w.events_last_2_months, 0)::bigint as events_last_2_months,
+  w.last_seen_at as last_seen_at,
+  (coalesce(w.events_last_2_months, 0) > 0) as is_active_computed,
+  m.is_active_override as is_active_override,
+  coalesce(m.is_active_override, (coalesce(w.events_last_2_months, 0) > 0))
+    as is_active_effective,
+  m.affiliate_manager::text as affiliate_manager
+from public.myprecious m
+left join events_window w
+  on w.company = m.company
+ and w.aff_lookup = m.aff_lookup;
+
+-- Unique index required for CONCURRENTLY refresh (assumes no duplicates).
+create unique index if not exists mv_campaign_activity_uniq_idx
+  on public.mv_campaign_activity (company, aff_lookup);
+
+-- Scheduled refresh (every 15 minutes).
+-- Requires pg_cron extension and runs outside transactions.
+select cron.schedule(
+  'mv_campaign_activity_refresh_15m',
+  '*/15 * * * *',
+  $$refresh materialized view concurrently public.mv_campaign_activity;$$
+);
+
+
+-- =====================================================================
+-- FILE: sql/activity/09_mv_now_v2.sql
+-- =====================================================================
+-- mv_now_v2
+-- Purpose: Intraday ingredients for Lovable (forms + coreg).
+create materialized view public.mv_now_v2 as
+with
+time_ctx as (
+  select
+    timezone('America/Los_Angeles', now()) as pacific_now,
+    date(timezone('America/Los_Angeles', now())) as today_pacific_date,
+    extract(hour from timezone('America/Los_Angeles', now())) as current_hour
+),
+blocks as (
+  select
+    today_pacific_date,
+    case
+      when current_hour < 4 then 0
+      when current_hour < 8 then 1
+      when current_hour < 12 then 2
+      when current_hour < 16 then 3
+      when current_hour < 20 then 4
+      else 5
+    end as current_block_index,
+    ((
+      case
+        when current_hour < 4 then 0
+        when current_hour < 8 then 1
+        when current_hour < 12 then 2
+        when current_hour < 16 then 3
+        when current_hour < 20 then 4
+        else 5
+      end
+    ) + 1) / 6.0 as blocks_fraction
+  from time_ctx
+),
+campaigns as (
+  select
+    case
+      when lower(company) in ('tra', 'gt', 'dra') then 'forms'
+      else 'coreg'
+    end::text as traffic_type,
+    company,
+    aff_lookup,
+    campaign_key,
+    publisher,
+    campaign,
+    affiliate_manager,
+    is_active_effective
+  from public.mv_campaign_activity
+),
+daily_union as (
+  select
+    'forms'::text as traffic_type,
+    company,
+    aff_lookup,
+    campaign_key,
+    pacific_date,
+    lead_count
+  from public.v_forms_daily
+  union all
+  select
+    'coreg'::text as traffic_type,
+    company,
+    aff_lookup,
+    campaign_key,
+    pacific_date,
+    lead_count
+  from public.v_coreg_daily
+),
+daily_stats as (
+  select
+    traffic_type,
+    company,
+    aff_lookup,
+    campaign_key,
+    min(pacific_date) as first_seen_pacific_date,
+    sum(lead_count)::bigint as lifetime_total
+  from daily_union
+  group by traffic_type, company, aff_lookup, campaign_key
+),
+blocks_union as (
+  select
+    'forms'::text as traffic_type,
+    company,
+    aff_lookup,
+    campaign_key,
+    pacific_date,
+    block_index,
+    lead_count
+  from public.v_forms_blocks
+  union all
+  select
+    'coreg'::text as traffic_type,
+    company,
+    aff_lookup,
+    campaign_key,
+    pacific_date,
+    block_index,
+    lead_count
+  from public.v_coreg_blocks
+),
+today_rollup as (
+  select
+    bu.traffic_type,
+    bu.company,
+    bu.aff_lookup,
+    bu.campaign_key,
+    sum(
+      case when bu.block_index <= b.current_block_index then bu.lead_count else 0 end
+    )::bigint as today_so_far,
+    sum(
+      case when bu.block_index = b.current_block_index then bu.lead_count else 0 end
+    )::bigint as current_block_count
+  from blocks_union bu
+  cross join blocks b
+  where bu.pacific_date = b.today_pacific_date
+  group by bu.traffic_type, bu.company, bu.aff_lookup, bu.campaign_key
+)
+select
+  c.traffic_type,
+  c.company::text as company,
+  c.aff_lookup::text as aff_lookup,
+  c.campaign_key::text as campaign_key,
+  c.publisher::text as publisher,
+  c.campaign::text as campaign,
+  c.affiliate_manager::text as affiliate_manager,
+  c.is_active_effective as is_active_effective,
+  b.today_pacific_date as today_pacific_date,
+  b.current_block_index as current_block_index,
+  b.blocks_fraction as blocks_fraction,
+  coalesce(tr.today_so_far, 0)::bigint as today_so_far,
+  coalesce(tr.current_block_count, 0)::bigint as current_block_count,
+  case
+    when ds.first_seen_pacific_date is null then 0::numeric
+    else ds.lifetime_total::numeric
+      / nullif((b.today_pacific_date - ds.first_seen_pacific_date + 1), 0)
+  end as lifetime_daily_avg
+from campaigns c
+cross join blocks b
+left join daily_stats ds
+  on ds.traffic_type = c.traffic_type
+ and ds.company = c.company
+ and ds.aff_lookup = c.aff_lookup
+ and ds.campaign_key = c.campaign_key
+left join today_rollup tr
+  on tr.traffic_type = c.traffic_type
+ and tr.company = c.company
+ and tr.aff_lookup = c.aff_lookup
+ and tr.campaign_key = c.campaign_key
+with no data;
+
+create unique index if not exists mv_now_v2_uniq_idx
+  on public.mv_now_v2 (traffic_type, company, aff_lookup);
+
+select cron.schedule(
+  'mv_now_v2_refresh_10m',
+  '*/10 * * * *',
+  $$refresh materialized view concurrently public.mv_now_v2;$$
+);
+
+refresh materialized view public.mv_now_v2;
+
+
+-- =====================================================================
+-- FILE: sql/activity/10_mv_periods_v2.sql
+-- =====================================================================
+-- mv_periods_v2
+-- Purpose: Completed-window ingredients for Lovable (forms + coreg).
+drop materialized view if exists public.mv_periods_v2;
+create materialized view public.mv_periods_v2 as
+with
+time_ctx as (
+  select
+    date(timezone('America/Los_Angeles', now())) as today_pacific_date,
+    date(timezone('America/Los_Angeles', now())) - 1 as yesterday_date,
+    date_trunc('year', date(timezone('America/Los_Angeles', now())))::date as jan1,
+    (date(timezone('America/Los_Angeles', now())) - 1)
+      - date_trunc('year', date(timezone('America/Los_Angeles', now())))::date + 1
+      as ytd_days
+),
+period_bounds as (
+  select
+    today_pacific_date,
+    yesterday_date,
+    jan1,
+    ytd_days,
+    (jan1 - ytd_days) as prior_ytd_start,
+    (jan1 - 1) as prior_ytd_end
+  from time_ctx
+),
+campaigns as (
+  select
+    case
+      when lower(company) in ('tra', 'gt', 'dra') then 'forms'
+      else 'coreg'
+    end::text as traffic_type,
+    company,
+    aff_lookup,
+    campaign_key,
+    publisher,
+    campaign,
+    affiliate_manager,
+    is_active_effective
+  from public.mv_campaign_activity
+),
+daily_union as (
+  select
+    'forms'::text as traffic_type,
+    company,
+    aff_lookup,
+    campaign_key,
+    pacific_date,
+    lead_count
+  from public.v_forms_daily
+  union all
+  select
+    'coreg'::text as traffic_type,
+    company,
+    aff_lookup,
+    campaign_key,
+    pacific_date,
+    lead_count
+  from public.v_coreg_daily
+),
+daily_agg as (
+  select
+    d.traffic_type,
+    d.company,
+    d.aff_lookup,
+    d.campaign_key,
+    min(d.pacific_date) as first_seen_pacific_date,
+    sum(case when d.pacific_date <= p.yesterday_date then d.lead_count else 0 end)::bigint
+      as lifetime_total_completed,
+    sum(case when d.pacific_date = p.yesterday_date then d.lead_count else 0 end)::bigint
+      as acquired_yesterday,
+    sum(case when d.pacific_date between p.today_pacific_date - 7 and p.today_pacific_date - 1
+        then d.lead_count else 0 end)::bigint as acquired_7,
+    sum(case when d.pacific_date between p.today_pacific_date - 30 and p.today_pacific_date - 1
+        then d.lead_count else 0 end)::bigint as acquired_30,
+    sum(case when d.pacific_date between p.today_pacific_date - 45 and p.today_pacific_date - 1
+        then d.lead_count else 0 end)::bigint as acquired_45,
+    sum(case when d.pacific_date between p.today_pacific_date - 90 and p.today_pacific_date - 1
+        then d.lead_count else 0 end)::bigint as acquired_90,
+    sum(case when d.pacific_date between p.jan1 and p.yesterday_date
+        then d.lead_count else 0 end)::bigint as acquired_ytd_completed,
+    sum(case when d.pacific_date between p.prior_ytd_start and p.prior_ytd_end
+        then d.lead_count else 0 end)::bigint as prior_ytd_total,
+    sum(case when d.pacific_date = p.today_pacific_date - 2
+        then d.lead_count else 0 end)::bigint as prior_yesterday_total,
+    sum(case when d.pacific_date between p.today_pacific_date - 14 and p.today_pacific_date - 8
+        then d.lead_count else 0 end)::bigint as prior_7_total,
+    sum(case when d.pacific_date between p.today_pacific_date - 60 and p.today_pacific_date - 31
+        then d.lead_count else 0 end)::bigint as prior_30_total,
+    sum(case when d.pacific_date between p.today_pacific_date - 90 and p.today_pacific_date - 46
+        then d.lead_count else 0 end)::bigint as prior_45_total,
+    sum(case when d.pacific_date between p.today_pacific_date - 180 and p.today_pacific_date - 91
+        then d.lead_count else 0 end)::bigint as prior_90_total
+  from daily_union d
+  cross join period_bounds p
+  group by d.traffic_type, d.company, d.aff_lookup, d.campaign_key
+)
+select
+  c.traffic_type,
+  c.company::text as company,
+  c.aff_lookup::text as aff_lookup,
+  c.campaign_key::text as campaign_key,
+  c.publisher::text as publisher,
+  c.campaign::text as campaign,
+  c.affiliate_manager::text as affiliate_manager,
+  c.is_active_effective as is_active_effective,
+
+  p.today_pacific_date as today_pacific_date,
+  p.ytd_days as ytd_days, -- expose it
+
+  coalesce(a.acquired_yesterday, 0)::bigint as acquired_yesterday,
+  coalesce(a.acquired_7, 0)::bigint as acquired_7,
+  coalesce(a.acquired_30, 0)::bigint as acquired_30,
+  coalesce(a.acquired_45, 0)::bigint as acquired_45,
+  coalesce(a.acquired_90, 0)::bigint as acquired_90,
+  coalesce(a.acquired_ytd_completed, 0)::bigint as acquired_ytd_completed,
+  coalesce(a.lifetime_total_completed, 0)::bigint as acquired_lifecycle_completed,
+
+  -- baseline daily avg
+  case
+    when a.first_seen_pacific_date is null then 0::numeric
+    else a.lifetime_total_completed::numeric
+      / nullif((p.yesterday_date - a.first_seen_pacific_date + 1), 0)
+  end as baseline_lifetime_daily_avg,
+
+  -- prior totals (completed)
+  coalesce(a.prior_yesterday_total, 0)::bigint as prior_yesterday_total,
+  coalesce(a.prior_7_total, 0)::bigint as prior_7_total,
+  coalesce(a.prior_30_total, 0)::bigint as prior_30_total,
+  coalesce(a.prior_45_total, 0)::bigint as prior_45_total,
+  coalesce(a.prior_90_total, 0)::bigint as prior_90_total,
+
+  -- matching baseline daily avgs
+  (coalesce(a.prior_yesterday_total, 0)::numeric / 1) as baseline_prior_yesterday_avg,
+  (coalesce(a.prior_7_total, 0)::numeric / 7) as baseline_prior_7_avg,
+  (coalesce(a.prior_30_total, 0)::numeric / 30) as baseline_prior_30_avg,
+  (coalesce(a.prior_45_total, 0)::numeric / 45) as baseline_prior_45_avg,
+  (coalesce(a.prior_90_total, 0)::numeric / 90) as baseline_prior_90_avg,
+
+  -- eligibility flags
+  case
+    when a.first_seen_pacific_date is null then false
+    else a.first_seen_pacific_date <= (p.today_pacific_date - 2)
+  end as eligible_yesterday,
+  case
+    when a.first_seen_pacific_date is null then false
+    else a.first_seen_pacific_date <= (p.today_pacific_date - 14)
+  end as eligible_7,
+  case
+    when a.first_seen_pacific_date is null then false
+    else a.first_seen_pacific_date <= (p.today_pacific_date - 60)
+  end as eligible_30,
+  case
+    when a.first_seen_pacific_date is null then false
+    else a.first_seen_pacific_date <= (p.today_pacific_date - 90)
+  end as eligible_45,
+  case
+    when a.first_seen_pacific_date is null then false
+    else a.first_seen_pacific_date <= (p.today_pacific_date - 180)
+  end as eligible_90,
+
+  -- expected YTD total based on lifetime daily avg
+  (
+    case
+      when a.first_seen_pacific_date is null then 0::numeric
+      else a.lifetime_total_completed::numeric
+        / nullif((p.yesterday_date - a.first_seen_pacific_date + 1), 0)
+    end
+    * p.ytd_days
+  ) as expected_ytd_from_lifetime,
+
+  -- delta + velocity for the YTD vs lifetime-baseline comparison
+  (coalesce(a.acquired_ytd_completed, 0)::numeric
+    - (
+      case
+        when a.first_seen_pacific_date is null then 0::numeric
+        else a.lifetime_total_completed::numeric
+          / nullif((p.yesterday_date - a.first_seen_pacific_date + 1), 0)
+      end
+      * p.ytd_days
+    )
+  ) as delta_ytd_vs_lifetime,
+
+  case
+    when (
+      case
+        when a.first_seen_pacific_date is null then 0::numeric
+        else a.lifetime_total_completed::numeric
+          / nullif((p.yesterday_date - a.first_seen_pacific_date + 1), 0)
+      end
+      * p.ytd_days
+    ) = 0 then null
+    else coalesce(a.acquired_ytd_completed, 0)::numeric
+      / (
+        case
+          when a.first_seen_pacific_date is null then 0::numeric
+          else a.lifetime_total_completed::numeric
+            / nullif((p.yesterday_date - a.first_seen_pacific_date + 1), 0)
+        end
+        * p.ytd_days
+      )
+  end as velocity_ytd_vs_lifetime
+
+from campaigns c
+cross join period_bounds p
+left join daily_agg a
+  on a.traffic_type = c.traffic_type
+ and a.company = c.company
+ and a.aff_lookup = c.aff_lookup
+ and a.campaign_key = c.campaign_key
+with no data;
+
+refresh materialized view public.mv_periods_v2;
+
+-- =====================================================================
+-- FILE: sql/activity/11_lifecycle_averages_v1.sql
+-- =====================================================================
+-- v_all_daily_v2 + mv_lifecycle_averages_v1
+-- Purpose: Unified daily rollup + lifecycle averages from daily rollups only.
+
+create or replace view public.v_all_daily_v2 as
+select
+  company::text as company,
+  aff_lookup::text as aff_lookup,
+  campaign_key::text as campaign_key,
+  pacific_date::date as pacific_date,
+  lead_count::bigint as lead_count,
+  'forms'::text as traffic_type
+from public.v_forms_daily
+
+union all
+
+select
+  company::text as company,
+  aff_lookup::text as aff_lookup,
+  campaign_key::text as campaign_key,
+  pacific_date::date as pacific_date,
+  lead_count::bigint as lead_count,
+  'coreg'::text as traffic_type
+from public.v_coreg_daily;
+
+
+create materialized view public.mv_lifecycle_averages_v1 as
+with
+time_ctx as (
+  select
+    timezone('America/Los_Angeles', now())::date as today_pt,
+    (timezone('America/Los_Angeles', now())::date - 1) as yesterday_pt,
+    date_trunc('week', timezone('America/Los_Angeles', now())::date::timestamp)::date as this_week_start,
+    date_trunc('month', timezone('America/Los_Angeles', now())::date::timestamp)::date as this_month_start
+),
+lifecycle_days as (
+  select
+    d.company,
+    d.aff_lookup,
+    d.campaign_key,
+    sum(d.lead_count)::bigint as acquired_lifecycle_completed,
+    count(*)::int as days_completed
+  from public.v_all_daily_v2 d
+  cross join time_ctx t
+  where d.pacific_date <= t.yesterday_pt
+  group by d.company, d.aff_lookup, d.campaign_key
+),
+weekly_totals as (
+  select
+    d.company,
+    d.campaign_key,
+    date_trunc('week', d.pacific_date::timestamp)::date as week_start,
+    sum(d.lead_count)::bigint as week_total
+  from public.v_all_daily_v2 d
+  cross join time_ctx t
+  where d.pacific_date < t.this_week_start
+  group by d.company, d.campaign_key, week_start
+),
+weekly_avg as (
+  select
+    company,
+    campaign_key,
+    avg(week_total)::numeric as weekly_avg
+  from weekly_totals
+  group by company, campaign_key
+),
+monthly_totals as (
+  select
+    d.company,
+    d.campaign_key,
+    date_trunc('month', d.pacific_date::timestamp)::date as month_start,
+    sum(d.lead_count)::bigint as month_total
+  from public.v_all_daily_v2 d
+  cross join time_ctx t
+  where d.pacific_date < t.this_month_start
+  group by d.company, d.campaign_key, month_start
+),
+monthly_avg as (
+  select
+    company,
+    campaign_key,
+    avg(month_total)::numeric as monthly_avg
+  from monthly_totals
+  group by company, campaign_key
+)
+select
+  l.company::text as company,
+  l.aff_lookup::text as aff_lookup,
+  l.campaign_key::text as campaign_key,
+  l.acquired_lifecycle_completed,
+  (l.acquired_lifecycle_completed::numeric / nullif(l.days_completed, 0)) as daily_avg,
+  w.weekly_avg as weekly_avg,
+  m.monthly_avg as monthly_avg,
+  now() as updated_at
+from lifecycle_days l
+left join weekly_avg w
+  on w.company = l.company
+ and w.campaign_key = l.campaign_key
+left join monthly_avg m
+  on m.company = l.company
+ and m.campaign_key = l.campaign_key;
+
+-- Unique index required for CONCURRENTLY refresh.
+create unique index concurrently if not exists mv_lifecycle_averages_v1_uniq_idx
+  on public.mv_lifecycle_averages_v1 (company, campaign_key, aff_lookup);
+
+create index concurrently if not exists mv_lifecycle_averages_v1_company_campaign_key_idx
+  on public.mv_lifecycle_averages_v1 (company, campaign_key);
+
+create index concurrently if not exists mv_lifecycle_averages_v1_company_aff_lookup_idx
+  on public.mv_lifecycle_averages_v1 (company, aff_lookup);
+
+-- Scheduled refresh (daily shortly after midnight PT; 08:20 UTC).
+select cron.schedule(
+  'mv_lifecycle_averages_v1_refresh_daily',
+  '20 8 * * *',
+  $$refresh materialized view concurrently public.mv_lifecycle_averages_v1;$$
+);
+
+
+-- =====================================================================
+-- FILE: sql/activity/12_mv_ytd_yoy_v1.sql
+-- =====================================================================
+-- mv_ytd_yoy_v1
+-- Purpose: YTD Year-Over-Year completed metrics using daily rollups only.
+
+create materialized view public.mv_ytd_yoy_v1 as
+with
+time_ctx as (
+  select
+    timezone('America/Los_Angeles', now())::date as today_pt,
+    (timezone('America/Los_Angeles', now())::date - 1) as yesterday_pt
+),
+date_ctx as (
+  select
+    yesterday_pt as this_ytd_end,
+    date_trunc('year', yesterday_pt::timestamp)::date as this_ytd_start
+  from time_ctx
+),
+window_ctx as (
+  select
+    this_ytd_start,
+    this_ytd_end,
+    (this_ytd_end - this_ytd_start + 1)::int as ytd_days,
+    (this_ytd_start - interval '1 year')::date as last_ytd_start
+  from date_ctx
+),
+range_ctx as (
+  select
+    this_ytd_start,
+    this_ytd_end,
+    ytd_days,
+    last_ytd_start,
+    (last_ytd_start + (ytd_days - 1))::date as last_ytd_end
+  from window_ctx
+),
+this_ytd as (
+  select
+    d.company,
+    d.aff_lookup,
+    d.campaign_key,
+    sum(d.lead_count)::bigint as acquired_ytd_this_year
+  from public.v_all_daily_v2 d
+  cross join range_ctx r
+  where d.pacific_date between r.this_ytd_start and r.this_ytd_end
+  group by d.company, d.aff_lookup, d.campaign_key
+),
+last_ytd as (
+  select
+    d.company,
+    d.aff_lookup,
+    d.campaign_key,
+    sum(d.lead_count)::bigint as acquired_ytd_last_year
+  from public.v_all_daily_v2 d
+  cross join range_ctx r
+  where d.pacific_date between r.last_ytd_start and r.last_ytd_end
+  group by d.company, d.aff_lookup, d.campaign_key
+),
+combined as (
+  select
+    coalesce(t.company, l.company) as company,
+    coalesce(t.aff_lookup, l.aff_lookup) as aff_lookup,
+    coalesce(t.campaign_key, l.campaign_key) as campaign_key,
+    t.acquired_ytd_this_year,
+    l.acquired_ytd_last_year
+  from this_ytd t
+  full join last_ytd l
+    on l.company = t.company
+   and l.aff_lookup = t.aff_lookup
+   and l.campaign_key = t.campaign_key
+)
+select
+  c.company::text as company,
+  c.aff_lookup::text as aff_lookup,
+  c.campaign_key::text as campaign_key,
+  r.ytd_days,
+  r.this_ytd_start,
+  r.this_ytd_end,
+  r.last_ytd_start,
+  r.last_ytd_end,
+  coalesce(c.acquired_ytd_this_year, 0)::bigint as acquired_ytd_this_year,
+  c.acquired_ytd_last_year,
+  case
+    when c.acquired_ytd_last_year is null or c.acquired_ytd_last_year = 0 then null
+    else c.acquired_ytd_last_year::numeric / nullif(r.ytd_days, 0)
+  end as baseline_yoy_daily_avg,
+  c.acquired_ytd_last_year as expected_yoy_total,
+  case
+    when c.acquired_ytd_last_year is null then null
+    else coalesce(c.acquired_ytd_this_year, 0)::bigint - c.acquired_ytd_last_year
+  end as delta_yoy,
+  case
+    when c.acquired_ytd_last_year is null or c.acquired_ytd_last_year = 0 then null
+    else coalesce(c.acquired_ytd_this_year, 0)::numeric / c.acquired_ytd_last_year
+  end as velocity_yoy,
+  now() as updated_at
+from combined c
+cross join range_ctx r;
+
+create unique index if not exists mv_ytd_yoy_v1_uniq_idx
+  on public.mv_ytd_yoy_v1 (company, campaign_key, aff_lookup);
+
+select cron.schedule(
+  'mv_ytd_yoy_v1_refresh_daily',
+  '30 8 * * *',
+  $$refresh materialized view concurrently public.mv_ytd_yoy_v1;$$
+);
+
+
+-- =====================================================================
+-- FILE: sql/activity/13_watchlist_campaigns.sql
+-- =====================================================================
+-- Watchlist per-user campaigns (RLS by auth.uid)
+
+create extension if not exists "pgcrypto";
+
+create table if not exists public.watchlist_campaigns (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  user_email text null,
+  commander_callsign text null,
+  campaign_key text not null,
+  company text not null,
+  traffic_type text not null,
+  pinned boolean not null default false,
+  snoozed_until timestamptz null,
+  notes text null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.watchlist_campaigns
+  add constraint watchlist_campaigns_user_campaign_key_uniq
+  unique (user_id, campaign_key);
+
+create index if not exists watchlist_campaigns_user_id_idx
+  on public.watchlist_campaigns (user_id);
+
+create index if not exists watchlist_campaigns_user_id_pinned_idx
+  on public.watchlist_campaigns (user_id, pinned);
+
+create index if not exists watchlist_campaigns_user_id_snoozed_until_idx
+  on public.watchlist_campaigns (user_id, snoozed_until);
+
+create index if not exists watchlist_campaigns_campaign_key_idx
+  on public.watchlist_campaigns (campaign_key);
+
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists set_watchlist_campaigns_updated_at on public.watchlist_campaigns;
+create trigger set_watchlist_campaigns_updated_at
+before update on public.watchlist_campaigns
+for each row
+execute function public.set_updated_at();
+
+alter table public.watchlist_campaigns enable row level security;
+
+drop policy if exists watchlist_campaigns_select on public.watchlist_campaigns;
+create policy watchlist_campaigns_select
+on public.watchlist_campaigns
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists watchlist_campaigns_insert on public.watchlist_campaigns;
+create policy watchlist_campaigns_insert
+on public.watchlist_campaigns
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+drop policy if exists watchlist_campaigns_update on public.watchlist_campaigns;
+create policy watchlist_campaigns_update
+on public.watchlist_campaigns
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists watchlist_campaigns_delete on public.watchlist_campaigns;
+create policy watchlist_campaigns_delete
+on public.watchlist_campaigns
+for delete
+to authenticated
+using (auth.uid() = user_id);
+
+-- =====================================================================
+-- FILE: sql/activity/14_rpc_campaign_forecast_v1.sql
+-- =====================================================================
+-- Forecast RPC for Lovable: NOW / 7DAY / 30DAY
+
+create or replace function public.rpc_campaign_forecast_v1(
+  p_campaign_key text,
+  p_company text,
+  p_traffic_type text,
+  p_mode text  -- 'NOW' | '7DAY' | '30DAY'
+) returns jsonb
+language plpgsql
+as $$
+declare
+  v_mode text := upper(coalesce(p_mode, 'NOW'));
+  pacific_today_date date := date(timezone('America/Los_Angeles', now()));
+  week_start date := date_trunc('week', pacific_today_date)::date;
+  week_end date := (week_start + 6);
+  month_start date := date_trunc('month', pacific_today_date)::date;
+  month_end date := (month_start + interval '1 month' - interval '1 day')::date;
+
+  baseline_daily_lifetime numeric;
+  acquired_today_so_far bigint;
+  acquired_wtd_so_far bigint;
+  acquired_mtd_so_far bigint;
+
+  remaining_days_week int;
+  remaining_days_month int;
+
+  expected_today_total numeric;
+  expected_week_total numeric;
+  expected_month_total numeric;
+
+  remaining_needed_total numeric;
+  remaining_per_day_needed numeric;
+  needed_daily_pace_forward numeric;
+  recommendation_pct numeric;
+  recommendation_text text;
+begin
+  select coalesce(baseline_lifetime_daily_avg, 0)
+  into baseline_daily_lifetime
+  from public.mv_periods_v2
+  where traffic_type = p_traffic_type
+    and company = p_company
+    and campaign_key = p_campaign_key
+  limit 1;
+
+  with daily as (
+    select pacific_date, lead_count
+    from public.v_forms_daily
+    where p_traffic_type = 'forms'
+      and campaign_key = p_campaign_key
+      and company = p_company
+      and pacific_date between month_start and pacific_today_date
+    union all
+    select pacific_date, lead_count
+    from public.v_coreg_daily
+    where p_traffic_type = 'coreg'
+      and campaign_key = p_campaign_key
+      and company = p_company
+      and pacific_date between month_start and pacific_today_date
+  )
+  select
+    coalesce(sum(case when pacific_date = pacific_today_date then lead_count else 0 end), 0),
+    coalesce(sum(case when pacific_date between week_start and pacific_today_date then lead_count else 0 end), 0),
+    coalesce(sum(case when pacific_date between month_start and pacific_today_date then lead_count else 0 end), 0)
+  into acquired_today_so_far, acquired_wtd_so_far, acquired_mtd_so_far
+  from daily;
+
+  remaining_days_week := (week_end - pacific_today_date + 1);
+  remaining_days_month := (month_end - pacific_today_date + 1);
+
+  expected_today_total := baseline_daily_lifetime * 1;
+  expected_week_total := baseline_daily_lifetime * 7;
+  expected_month_total := baseline_daily_lifetime * 30;
+
+  if v_mode = 'NOW' then
+    remaining_needed_total := greatest(0, expected_today_total - acquired_today_so_far);
+    remaining_per_day_needed := null;
+    needed_daily_pace_forward := null;
+    recommendation_pct := remaining_needed_total / nullif(expected_today_total, 0);
+  elsif v_mode = '7DAY' then
+    remaining_needed_total := greatest(0, expected_week_total - acquired_wtd_so_far);
+    remaining_per_day_needed := remaining_needed_total / nullif(remaining_days_week, 0);
+    needed_daily_pace_forward := (
+      expected_week_total - (acquired_wtd_so_far - acquired_today_so_far)
+    ) / nullif(remaining_days_week, 0);
+    recommendation_pct := (needed_daily_pace_forward / nullif(baseline_daily_lifetime, 0)) - 1;
+  elsif v_mode = '30DAY' then
+    remaining_needed_total := greatest(0, expected_month_total - acquired_mtd_so_far);
+    remaining_per_day_needed := remaining_needed_total / nullif(remaining_days_month, 0);
+    needed_daily_pace_forward := (
+      expected_month_total - (acquired_mtd_so_far - acquired_today_so_far)
+    ) / nullif(remaining_days_month, 0);
+    recommendation_pct := (needed_daily_pace_forward / nullif(baseline_daily_lifetime, 0)) - 1;
+  else
+    raise exception 'Invalid p_mode: %', p_mode;
+  end if;
+
+  if recommendation_pct is null or abs(recommendation_pct) < 0.0001 then
+    recommendation_text := 'On pace to hit average';
+  elsif recommendation_pct > 0 then
+    recommendation_text := 'Increase by '
+      || trim(to_char(recommendation_pct * 100, 'FM999999990.00'))
+      || '% to hit average';
+  else
+    recommendation_text := 'Decrease by '
+      || trim(to_char(abs(recommendation_pct) * 100, 'FM999999990.00'))
+      || '% and still hit average';
+  end if;
+
+  return jsonb_build_object(
+    'campaign_key', p_campaign_key,
+    'company', p_company,
+    'traffic_type', p_traffic_type,
+    'mode', v_mode,
+    'pacific_today_date', pacific_today_date,
+    'week_start', week_start,
+    'week_end', week_end,
+    'month_start', month_start,
+    'month_end', month_end,
+    'baseline_daily_lifetime', baseline_daily_lifetime,
+    'acquired_today_so_far', acquired_today_so_far,
+    'acquired_wtd_so_far', acquired_wtd_so_far,
+    'acquired_mtd_so_far', acquired_mtd_so_far,
+    'expected_today_total', expected_today_total,
+    'expected_week_total', expected_week_total,
+    'expected_month_total', expected_month_total,
+    'remaining_days_week', remaining_days_week,
+    'remaining_days_month', remaining_days_month,
+    'remaining_needed_total', remaining_needed_total,
+    'remaining_per_day_needed', remaining_per_day_needed,
+    'needed_daily_pace_forward', needed_daily_pace_forward,
+    'recommendation_pct', recommendation_pct,
+    'recommendation_text', recommendation_text
+  );
+end;
+$$;
+
+grant execute on function public.rpc_campaign_forecast_v1(text, text, text, text) to authenticated;

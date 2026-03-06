@@ -1,0 +1,33 @@
+table_schema,table_name,policyname,permissive,roles,cmd,qual,with_check
+cron,job,cron_job_policy,PERMISSIVE,{public},ALL,(username = CURRENT_USER),null
+cron,job_run_details,cron_job_run_details_policy,PERMISSIVE,{public},ALL,(username = CURRENT_USER),null
+public,dra+db_bogo_fb--rr,insert_anon,PERMISSIVE,{anon},INSERT,null,TRUE
+public,dra+db_carbonari--rr,insert_anon,PERMISSIVE,{anon},INSERT,null,TRUE
+public,dra_5-0,insert_anon,PERMISSIVE,{anon},INSERT,null,TRUE
+public,dra_5-0,read_all_dra,PERMISSIVE,{analytics_reader},SELECT,TRUE,null
+public,dra_coreg_all,dra_coreg_all_insert_anon_tra_coreg2026,PERMISSIVE,{anon},INSERT,null,TRUE
+public,dra_coreg_all,dra_coreg_all_read_all_coreg,PERMISSIVE,{analytics_reader},SELECT,TRUE,null
+public,dra_direct,insert_anon,PERMISSIVE,{anon},INSERT,null,TRUE
+public,dracoreg2026,insert_anon_dracoreg2026,PERMISSIVE,{anon},INSERT,null,TRUE
+public,dracoreg2026,read_all_coreg,PERMISSIVE,{analytics_reader},SELECT,TRUE,null
+public,gt+tra_eminem_tt--rr,insert_anon,PERMISSIVE,{anon},INSERT,null,TRUE
+public,gt_5-0,insert_anon,PERMISSIVE,{anon},INSERT,null,TRUE
+public,gt_5-0,read_all_gt,PERMISSIVE,{analytics_reader},SELECT,TRUE,null
+public,myprecious,read_all_routes,PERMISSIVE,{analytics_reader},SELECT,TRUE,null
+public,myprecious,read_myprecious_authenticated,PERMISSIVE,{authenticated},SELECT,TRUE,null
+public,tra+gt_illuminati--rr,insert_anon,PERMISSIVE,{anon},INSERT,null,TRUE
+public,tra_5-0,insert_anon,PERMISSIVE,{anon},INSERT,null,TRUE
+public,tra_5-0,read_all_tra,PERMISSIVE,{analytics_reader},SELECT,TRUE,null
+public,tra_coreg2026,insert_anon_tra_coreg2026,PERMISSIVE,{anon},INSERT,null,TRUE
+public,tra_coreg2026,read_all_coreg,PERMISSIVE,{analytics_reader},SELECT,TRUE,null
+public,tra_coreg_all,insert_anon_tra_coreg2026,PERMISSIVE,{anon},INSERT,null,TRUE
+public,tra_coreg_all,read_all_coreg,PERMISSIVE,{analytics_reader},SELECT,TRUE,null
+public,tra_direct,insert_anon,PERMISSIVE,{anon},INSERT,null,TRUE
+public,tra_forms_all,insert_anon,PERMISSIVE,{anon},INSERT,null,TRUE
+public,tra_forms_all,read_all_dra,PERMISSIVE,{analytics_reader},SELECT,TRUE,null
+public,watchlist_campaigns,watchlist_campaigns_delete,PERMISSIVE,{authenticated},DELETE,(auth.uid() = user_id),null
+public,watchlist_campaigns,watchlist_campaigns_insert,PERMISSIVE,{authenticated},INSERT,null,(auth.uid() = user_id)
+public,watchlist_campaigns,watchlist_campaigns_select,PERMISSIVE,{authenticated},SELECT,(auth.uid() = user_id),null
+public,watchlist_campaigns,watchlist_campaigns_update,PERMISSIVE,{authenticated},UPDATE,(auth.uid() = user_id),(auth.uid() = user_id)
+public,zzzmastermonitorlizard,mzl_insert_anon,PERMISSIVE,{anon},INSERT,null,TRUE
+public,zzzmastermonitorlizard,read_all_logs,PERMISSIVE,{analytics_reader},SELECT,TRUE,null

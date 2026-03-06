@@ -1,0 +1,101 @@
+table_schema,table_name,constraint_name,constraint_type,column_name,foreign_table_schema,foreign_table_name,foreign_column_name,update_rule,delete_rule
+auth,audit_log_entries,16494_16525_2_not_null,CHECK,null,null,null,null,null,null
+auth,audit_log_entries,16494_16525_5_not_null,CHECK,null,null,null,null,null,null
+auth,audit_log_entries,audit_log_entries_pkey,PRIMARY KEY,id,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_10_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_11_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_12_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_13_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_16_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_1_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_23_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_24_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_2_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_3_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_4_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_5_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_6_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_7_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_8_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,16494_52517_9_not_null,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_authorization_url_https,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_authorization_url_length,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_client_id_length,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_discovery_url_length,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_identifier_format,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_identifier_key,UNIQUE,identifier,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_issuer_length,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_jwks_uri_https,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_jwks_uri_length,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_name_length,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_oauth2_requires_endpoints,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_oidc_discovery_url_https,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_oidc_issuer_https,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_oidc_requires_issuer,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_pkey,PRIMARY KEY,id,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_provider_type_check,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_token_url_https,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_token_url_length,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_userinfo_url_https,CHECK,null,null,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_userinfo_url_length,CHECK,null,null,null,null,null,null
+auth,flow_state,16494_16927_11_not_null,CHECK,null,null,null,null,null,null
+auth,flow_state,16494_16927_17_not_null,CHECK,null,null,null,null,null,null
+auth,flow_state,16494_16927_1_not_null,CHECK,null,null,null,null,null,null
+auth,flow_state,16494_16927_6_not_null,CHECK,null,null,null,null,null,null
+auth,flow_state,flow_state_pkey,PRIMARY KEY,id,null,null,null,null,null
+auth,identities,16494_16725_1_not_null,CHECK,null,null,null,null,null,null
+auth,identities,16494_16725_2_not_null,CHECK,null,null,null,null,null,null
+auth,identities,16494_16725_3_not_null,CHECK,null,null,null,null,null,null
+auth,identities,16494_16725_4_not_null,CHECK,null,null,null,null,null,null
+auth,identities,16494_16725_9_not_null,CHECK,null,null,null,null,null,null
+auth,identities,identities_pkey,PRIMARY KEY,id,null,null,null,null,null
+auth,identities,identities_provider_id_provider_unique,UNIQUE,provider_id,null,null,null,null,null
+auth,identities,identities_provider_id_provider_unique,UNIQUE,provider,null,null,null,null,null
+auth,identities,identities_user_id_fkey,FOREIGN KEY,user_id,null,null,null,NO ACTION,CASCADE
+auth,instances,16494_16518_1_not_null,CHECK,null,null,null,null,null,null
+auth,instances,instances_pkey,PRIMARY KEY,id,null,null,null,null,null
+auth,mfa_amr_claims,16494_16814_1_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_amr_claims,16494_16814_2_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_amr_claims,16494_16814_3_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_amr_claims,16494_16814_4_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_amr_claims,16494_16814_5_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_amr_claims,amr_id_pk,PRIMARY KEY,id,null,null,null,null,null
+auth,mfa_amr_claims,mfa_amr_claims_session_id_authentication_method_pkey,UNIQUE,session_id,null,null,null,null,null
+auth,mfa_amr_claims,mfa_amr_claims_session_id_authentication_method_pkey,UNIQUE,authentication_method,null,null,null,null,null
+auth,mfa_amr_claims,mfa_amr_claims_session_id_fkey,FOREIGN KEY,session_id,null,null,null,NO ACTION,CASCADE
+auth,mfa_challenges,16494_16802_1_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_challenges,16494_16802_2_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_challenges,16494_16802_3_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_challenges,16494_16802_5_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_challenges,mfa_challenges_auth_factor_id_fkey,FOREIGN KEY,factor_id,null,null,null,NO ACTION,CASCADE
+auth,mfa_challenges,mfa_challenges_pkey,PRIMARY KEY,id,null,null,null,null,null
+auth,mfa_factors,16494_16789_1_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_factors,16494_16789_2_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_factors,16494_16789_4_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_factors,16494_16789_5_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_factors,16494_16789_6_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_factors,16494_16789_7_not_null,CHECK,null,null,null,null,null,null
+auth,mfa_factors,mfa_factors_last_challenged_at_key,UNIQUE,last_challenged_at,null,null,null,null,null
+auth,mfa_factors,mfa_factors_pkey,PRIMARY KEY,id,null,null,null,null,null
+auth,mfa_factors,mfa_factors_user_id_fkey,FOREIGN KEY,user_id,null,null,null,NO ACTION,CASCADE
+auth,oauth_authorizations,16494_44947_11_not_null,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,16494_44947_12_not_null,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,16494_44947_14_not_null,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,16494_44947_15_not_null,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,16494_44947_1_not_null,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,16494_44947_2_not_null,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,16494_44947_3_not_null,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,16494_44947_5_not_null,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,16494_44947_6_not_null,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_authorization_code_key,UNIQUE,authorization_code,null,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_authorization_code_length,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_authorization_id_key,UNIQUE,authorization_id,null,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_client_id_fkey,FOREIGN KEY,client_id,null,null,null,NO ACTION,CASCADE
+auth,oauth_authorizations,oauth_authorizations_code_challenge_length,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_expires_at_future,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_nonce_length,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_pkey,PRIMARY KEY,id,null,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_redirect_uri_length,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_resource_length,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_scope_length,CHECK,null,null,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_state_length,CHECK,null,null,null,null,null,null
